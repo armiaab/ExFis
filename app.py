@@ -1,13 +1,13 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
 
 SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjfay3AikrwDJItRNLvCYlACYkuzT4HTQ9Azo59AaHRYkDV9CW6yDgrYpdhbWV6Wuqpja8tUh3OfaW/pub?gid=0&single=true&output=csv"
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=5)
 def load_data():
-    """Load data dari Google Sheets (CSV) dan rapikan tipe datanya."""
     df = pd.read_csv(SHEET_CSV_URL)
 
     df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
@@ -30,10 +30,18 @@ def main():
         layout="wide",
     )
 
-    st.title("⚡ Dashboard Energi ESP32 + PZEM004T")
+    st.title("Dashboard Energi ESP32 + PZEM004T")
     st.caption("Data diambil dari Google Sheets (via Apps Script + ESP32)")
 
     st.sidebar.header("Pengaturan")
+
+    auto_refresh = st.sidebar.checkbox("Auto refresh setiap 5 detik", value=False)
+    if auto_refresh:
+        st_autorefresh(interval=5000, key="auto_refresh")
+
+    if st.sidebar.button("Refresh sekarang"):
+        load_data.clear()
+
     tarif = st.sidebar.number_input(
         "Tarif listrik (Rp / kWh)",
         min_value=0.0,
@@ -76,27 +84,17 @@ def main():
         rate_kwh_per_hour = 0.0
         monthly_kwh = 0.0
 
-    # Biaya
     cost_today = energy_today * tarif
     cost_monthly = monthly_kwh * tarif
 
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.metric(
-            "Daya sekarang (W)",
-            f"{latest['Power (W)']:.2f}",
-        )
+        st.metric("Daya sekarang (W)", f"{latest['Power (W)']:.2f}")
     with col2:
-        st.metric(
-            "Energi hari ini (kWh)",
-            f"{energy_today:.3f}",
-        )
+        st.metric("Energi hari ini (kWh)", f"{energy_today:.3f}")
     with col3:
-        st.metric(
-            "Biaya hari ini (Rp)",
-            f"{cost_today:,.0f}",
-        )
+        st.metric("Biaya hari ini (Rp)", f"{cost_today:,.0f}")
     with col4:
         st.metric(
             "Estimasi biaya / bulan (Rp)",
