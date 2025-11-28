@@ -1,16 +1,21 @@
-import streamlit as st 
+import streamlit as st
 import pandas as pd
 from datetime import datetime
-from streamlit_autorefresh import st_autorefresh
+import time
 
-SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjfay3AikrwDJItRNLvCYlACYkuzT4HTQ9Azo59AaHRYkDV9CW6yDgrYpdhbWV6Wuqpja8tUh3OfaW/pub?gid=0&single=true&output=csv"
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjfay3AikrwDJItRNLvCYlACYkuzT4HTQ9Azo59AaHRYkDV9CW6yDgrYpdhbWV6Wuqpja8tUh3OfaW/pub?output=csv"
 
 
-@st.cache_data(ttl=5)
 def load_data():
     df = pd.read_csv(SHEET_CSV_URL)
 
-    df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
+    # Format tanggal: dd/mm/yyyy (tanggal/bulan/tahun), dengan atau tanpa jam
+    df["Timestamp"] = pd.to_datetime(
+        df["Timestamp"],
+        dayfirst=True,
+        errors="coerce",
+    )
+
     df = df.dropna(subset=["Timestamp"])
     df = df.sort_values("Timestamp")
 
@@ -30,17 +35,15 @@ def main():
         layout="wide",
     )
 
-    st.title("Dashboard Energi ESP32 + PZEM004T")
+    st.title("⚡ Dashboard Energi ESP32 + PZEM004T")
     st.caption("Data diambil dari Google Sheets (via Apps Script + ESP32)")
 
     st.sidebar.header("Pengaturan")
 
     auto_refresh = st.sidebar.checkbox("Auto refresh setiap 5 detik", value=False)
-    if auto_refresh:
-        st_autorefresh(interval=5000, key="auto_refresh")
 
     if st.sidebar.button("Refresh sekarang"):
-        load_data.clear()
+        st.rerun()
 
     tarif = st.sidebar.number_input(
         "Tarif listrik (Rp / kWh)",
@@ -126,6 +129,10 @@ def main():
             df.sort_values("Timestamp", ascending=False).head(50),
             use_container_width=True,
         )
+
+    if auto_refresh:
+        time.sleep(5)
+        st.rerun()
 
 
 if __name__ == "__main__":
